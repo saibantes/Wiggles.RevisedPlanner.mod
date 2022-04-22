@@ -1,4 +1,5 @@
 # RevisedPlanner for Diggles
+My biggest issues with the original game include the constantly unhappy gnomes and their inaptitude to just do the tasks I have ordered. 
 This mod changes the behavior of the Diggles: Both the assignments during work and the activities during spare time are greatly revised. 
 While I was at it, I also fixed some bugs. And added new bugs.
 ## work-time assignments

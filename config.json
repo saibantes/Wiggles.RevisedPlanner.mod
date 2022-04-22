@@ -1,0 +1,17 @@
+{
+    "version" : "0.1",
+    "author" : "Saibantes",
+    
+    "name" :  {
+        "en" : "RevisedPlanner",
+    },
+    "description" : {
+        "en" : "Changes the behavior of the Diggles both at work and during spare time.",
+        "de" : "Ändert das Wiggle-Verhalten bei der Arbeit und in der Freizeit."
+    },
+    
+    "links" : {
+        "download" : "https://github.com/saibantes/Wiggles.RevisedPlanner.mod/releases",
+        "wiki" : "https://github.com/saibantes/Wiggles.RevisedPlanner.mod/wiki"
+    },
+}
