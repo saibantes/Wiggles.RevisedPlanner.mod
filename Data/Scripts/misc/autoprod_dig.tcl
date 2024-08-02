@@ -229,19 +229,19 @@ def_class AutoprodDigsiteFinder none none 0 {} {
                 global old_sizes old_entries
                 set posx [vector_unpackx $pos]
                 set posy [vector_unpacky $pos]
-                set index 0
+                set index -1
                 foreach site $old_entries {
+                    incr index
                     set pos2 [get_digedge $site $gnome]
                     set pos2x [vector_unpackx $pos2]
                     if {$pos2x < 0} continue
                     set pos2y [vector_unpacky $pos2]
-                    #log "checking nearby digsites: X:$pos2x-$posx Y:$pos2y-$posy size1:[lindex $old_sizes $index] size2:[lindex $old_sizes $site_id]"
+                    #log "checking nearby digsites: $index -> X:$pos2x-$posx Y:$pos2y-$posy size1:[lindex $old_sizes $index] size2:[lindex $old_sizes $site_id]"
                     if {(abs($pos2x-$posx) <= 16) &&
-                        (abs($pos2y-$posy) <= 12) &&
+                        (abs($pos2y-$posy) <= 10) &&
                         (([lindex $old_sizes $index] < 54) || ([lindex $old_sizes $site_id] < 54))} {
                         lappend result $index
                     }
-                    incr index
                 }
             }
             return $result

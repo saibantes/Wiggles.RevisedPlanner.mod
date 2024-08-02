@@ -1,22 +1,5 @@
 $start
 $replace
-		}
-		set current_lock_obj 0
-	}
-}
-
-
-$with
-		}
-		set current_lock_obj 0
-	}
-    autoprod_unlock
-}
-
-
-$end
-$start
-$replace
 // leert das gesamte Inventory
 
 proc beamto_world_all {} {

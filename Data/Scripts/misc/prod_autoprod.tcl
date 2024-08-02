@@ -155,12 +155,69 @@ if {[in_class_def]} {
         if {![get_prod_enabled this]} {
             return ""
         }
+        
+        # remove expired items from blacklist
+        global blacklist_items blacklist_time
+        while {([llength $blacklist_time] > 0) && ([gettime] - [lindex $blacklist_time 0] > 3*150)} {
+            #catch {log "X: blacklisting of [get_objname [lindex $blacklist_items 0]] expired" 0}
+            lrem blacklist_items 0
+            lrem blacklist_time 0
+        }
+        
+        if {[get_objclass this] == "Grenzstein"} {
+            set collectables {Stein Kohle Kristall Pilzhut Gold Eisen Kristallerz Golderz Eisenerz Bier Pilzstamm}
+            set materials [obj_query this -class $collectables -boundingbox {-10 -1 -15 +10 +1 +15} -owner {own world} -flagneg {instore locked contained} -visibility own]
+            for {set i [expr {[llength $materials]-1}]} {$i >= 0} {incr i -1} {
+                set item [lindex $materials $i]
+                if {[lsearch $blacklist_items $item] >= 0} {
+                    #log "X: skipping [get_objname $item], because it is blacklisted"
+                    lrem materials $i
+                }
+            }
+            if {($materials != "0") && ($materials != "")} {
+                #log "X: i have material: $materials"
+                global last_time_updated_base closest_base
+                if {![info exists last_time_updated_base] || ([gettime] - $last_time_updated_base > 60)} {
+                    catch {unset set closest_base}
+                    set last_time_updated_base [gettime]
+                    set my_prods [obj_query this -type {production energy store} -owner own -flagneg boxed -sorting asc]
+                    while {[get_prod_slot_list [lindex $my_prods 0]] <= 0} {
+                        set my_prods [lreplace $my_prods 0 0]
+                    }
+                    set dist [vector_sub [get_pos this] [get_pos [lindex $my_prods 0]]]
+                    if {abs([vector_unpackx $dist])+3*abs([vector_unpacky $dist]) > 100} {
+                        set num_my_prods [llength $my_prods]
+                        foreach p $my_prods {
+                            set num_prod_around [llength [obj_query $p -type {production energy store} -owner own -flagneg boxed -sorting none -range 100]]
+                            if {($num_prod_around >= 5) || ($num_prod_around > $num_my_prods*3/4)} {
+                                set closest_base $p
+                                #log "X: my closest base is at [get_objname $closest_base]"
+                                break
+                            }
+                        }
+                        if {![info exists closest_base]} {
+                            #log "X: I haven't identified a base"
+                        }
+                    } else {
+                        #log "X: I am already close to the base ([get_objname [lindex $my_prods 0]]), no need to carry stuff around"
+                    }
+                }
+                if {[info exists closest_base]} {
+                    global autoprod_items
+                    foreach item $materials {
+                        lappend autoprod_items $item
+                        set_lock $item 1
+                    }
+                    #log "X: carry ($materials) to $closest_base"
+                    return [list "carry" $materials $closest_base]
+                }
+            }
+        }
         set tasks [get_prod_task_list this]
         if {![get_prod_schedule this]} {
             #log "X: no schedule here"
             # check if this is a Pilzfarm where we should cut down a Pilz
             #log "([get_objclass this] == Farm) && ($tasks == Pilz) && ![get_prod_materialneed this]"
-            # TODO: this is a low-priority task
             if {([get_objclass this] == "Farm") && ($tasks == "Pilz") && ![get_prod_materialneed this]} {
                 foreach c {Pilzhut Pilzstamm} {
                     set items [obj_query this "-class $c -boundingbox \{-2 -0.5 -3 2 0.5 2.5\} -flagneg contained"]
@@ -171,7 +228,7 @@ if {[in_class_def]} {
                             set item [lindex $pilze $idx]
                             if {($item != 0) && ([get_attrib $item PilzAge] == 3)} {
                                 #log "X: so little stuff here, we might as well cut down another Pilz"
-                                return "harvest $item"
+                                return "harvest $item 1"
                             }
                             lrem pilze $idx
                         }
@@ -234,14 +291,6 @@ if {[in_class_def]} {
                 return "work $task \"[set tttinfluence_$task]\" \"[set tttgain_$task]\""
             }
             
-            # remove expired items from blacklist
-            global blacklist_items blacklist_time
-            while {([llength $blacklist_time] > 0) && ([gettime] - [lindex $blacklist_time 0] > 3*150)} {
-                #catch {log "X: blacklisting of [get_objname [lindex $blacklist_items 0]] expired" 0}
-                lrem blacklist_items 0
-                lrem blacklist_time 0
-            }
-            
             set my_x [get_posx this]
             set my_y [get_posy this]
             set bbox {-200 -100 -30 +200 +100 +30}
@@ -251,6 +300,7 @@ if {[in_class_def]} {
                 [obj_query this -class $need_mat -boundingbox $bbox -owner {own world} -visibility own -sorting none -flagneg {locked contained}]      \
                 [obj_query this -class $need_mat -boundingbox $bbox -owner {own world} -visibility own -sorting none -flagneg locked -flagpos instore] \
             ]
+            #log "found [llength $found_mat]: $found_mat" 0
             set mining_mat  {Stein Kohle Kristallerz Golderz Eisenerz}
             set mining_node {Steinbrocken Kohlebrocken Kristallerzbrocken Golderzbrocken Eisenerzbrocken}
             foreach raw_mat $mining_mat {
@@ -259,11 +309,14 @@ if {[in_class_def]} {
                     set found_mat [concat $found_mat [obj_query this -class ${raw_mat}brocken -boundingbox $bbox -owner {own world} -visibility own -sorting none -flagneg locked]]
                 }
             }
+            #log "found [llength $found_mat]: $found_mat" 0
             if {[land $need_mat {Pilzhut Pilzstamm}] != ""} {
                 #log "X: also considering to cut down Pilze" 0
                 set found_mat [concat $found_mat [obj_query this -class Pilz -boundingbox $bbox -owner {own world} -visibility own -sorting none -flagneg locked]]
             }
+            #log "found [llength $found_mat]: $found_mat" 0
             set found_mat [lsort -unique $found_mat]
+            #log "found [llength $found_mat]: $found_mat" 0
             set total_path 0.0
             set running_hamster 0
             global autoprod_items
@@ -304,7 +357,7 @@ if {[in_class_def]} {
                             # non-paralyzed, non-farmed hamsters count as if <x> units further away
                             fincr dist 150
                         }
-#log "found $item ([get_objname $item]) $dist away"
+                        #log "found $item ([get_objname $item]) $dist away"
                         if {$dist < $min_dist} {
                             set min_dist $dist              ;# the distance of the closest found item so far
                             set closest_item $item          ;# the objid of the closest item found so far
@@ -312,12 +365,14 @@ if {[in_class_def]} {
                             set consume_idx $found_mat_idx  ;# the index in the $found_mat list of that item
                             set closest_class $found_class  ;# the item class of that item
                         }
+                    } else {
+                        #log "ignoring $item"
                     }
                     incr found_mat_idx
                 }
                 # did we find anything in range?
                 if {$min_dist > 2*200} {
-                    #log "WARNUNG: couldn't find material"
+                    #log "WARNUNG: couldn't find material, still need ($need_mat)"
                     # find another production item instead
                     catch {unset autoprod_planned_task}
                     set task ""
@@ -325,12 +380,13 @@ if {[in_class_def]} {
                     break
                 }
                 set autoprod_planned_task $task
+                #log "best item is #$consume_idx $closest_item ([get_objname $closest_item]), $min_dist away, needed as $need_idx"
                 # if the closest matching item we found is a living Pilz, cut that down first
                 if {$closest_class == "Pilz"} {
                     #log "X: better cut down that Pilz!"
                     set_lock $closest_item 1
                     lappend autoprod_items $closest_item
-                    return "harvest $closest_item"
+                    return "harvest $closest_item 0"
                 }
                 # if the closest matching item we found is a Brocken, mine that thing first
                 if {[string match "*brocken" $closest_class]} {
@@ -344,7 +400,6 @@ if {[in_class_def]} {
                     #log "X: The Hamster $closest_item it loose!" 0
                     set running_hamster 1
                 }
-#log "best item is #$consume_idx $closest_item ([get_objname $closest_item]), $min_dist away, needed as $need_idx"
                 # keep a list of all found items in reverse order of finding
                 set result [linsert $result 0 $closest_item]
                 fincr total_path $min_dist

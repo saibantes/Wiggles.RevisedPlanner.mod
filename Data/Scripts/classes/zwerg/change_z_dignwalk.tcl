@@ -134,3 +134,34 @@ $with
     	if {[lindex $walkpos 0]<0} {
 			log "walk_near_item: get_place 2 failed - last fallback is vector_fix!"
 $end
+$start
+$replace
+		set walkfail_tasks ""
+		state_enable this
+	}
+}
+
+proc note_pathlength {pos {lock 1}} {
+$with
+		set walkfail_tasks ""
+		state_enable this
+	}
+	global walkfail_count walkfail_ticker
+	if {3 == [get_walkresult this]} {
+		if {![info exists walkfail_count]} {set walkfail_count 0}
+		if {[incr walkfail_count] >= 3} {
+			if {![info exists walkfail_ticker]} {
+				set walkfail_ticker [newsticker new [get_owner this] -text "[get_objname this] [lmsg {is stuck}]" -category gnomeinfo -click "set_view [vector_setz [get_pos this] 0]"]
+			}
+		}
+	} else {
+		set walkfail_count 0
+		if {[info exists walkfail_ticker]} {
+			newsticker delete $walkfail_ticker
+			unset walkfail_ticker
+		}
+	}
+}
+
+proc note_pathlength {pos {lock 1}} {
+$end

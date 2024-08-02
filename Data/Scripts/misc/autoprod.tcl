@@ -28,6 +28,8 @@ proc autoprod_ex {owner} {
     set num_zwille      0
     set num_hammer      0
     set num_strahl      0
+    set num_injured     0
+    set max_inv         0
     foreach gnome $gnomes {
         set current_workplace [ref_get $gnome ::current_workplace]
         lappend busy_places $current_workplace
@@ -45,9 +47,13 @@ proc autoprod_ex {owner} {
 
 #        log_static "X: [format {%-11s is in state %-18s, last_workplace=%-4s (%s), %s} [get_objname $gnome] [state_get $gnome] [prod_gnome_get_last_workplace $gnome] [get_objname [prod_gnome_get_last_workplace $gnome]] ($digpos)]" 0
         #log_static "X: [format {%-11s is in state %-18s, current_workplace=%-4s (%s), %s, %s} [get_objname $gnome] [state_get $gnome] $current_workplace [get_objname $current_workplace] $workclass ($digpos)]" 0
+        if {([get_remaining_sparetime $gnome] > 0) && ([get_attrib $gnome atr_Hitpoints] < 0.97)} {
+            incr num_injured
+        }
         if {([get_remaining_sparetime $gnome] == 0) && [get_prodautoschedule $gnome]} {
             lappend preferred_workers([prod_gnome_get_preferred_workplace $gnome]) $gnome
             incr num_gnomes
+            set max_inv [hmax $max_inv [inv_getsize $gnome]]
             if {[inv_find $gnome "Kettensaege"] >= 0}    {incr num_kettensaege}
             if {[inv_find $gnome "Steinschleuder"] >= 0} {incr num_zwille}
             if {[inv_find $gnome "Hoverboard"] >= 0} {
@@ -105,7 +111,7 @@ proc autoprod_ex {owner} {
                     set best_score -1e37
                     foreach gnome $available_gnomes {
                         if {[gnome_invent_possible $gnome $item]} {
-                            set score [call_method $gnome autoprod_rate_task $task $num_gnomes $num_kettensaege $num_hammer $num_strahl $num_reithamster $num_hoverboard]
+                            set score [call_method $gnome autoprod_rate_task $task $num_gnomes $num_kettensaege $num_hammer $num_strahl $num_reithamster $num_hoverboard $max_inv $num_injured]
                             #log_static [format "X: %-11s rated %-20s -> %9.2f" [get_objname $gnome] [lrange $task 0 2] $score] 0
                             if {$score > $best_score} {
                                 set best_score $score
@@ -179,7 +185,7 @@ proc autoprod_ex {owner} {
     set assignments {}
     foreach task $tasks {
         foreach gnome $available_gnomes {
-            set score [call_method $gnome autoprod_rate_task $task $num_gnomes $num_kettensaege $num_hammer $num_strahl $num_reithamster $num_hoverboard]
+            set score [call_method $gnome autoprod_rate_task $task $num_gnomes $num_kettensaege $num_hammer $num_strahl $num_reithamster $num_hoverboard $max_inv $num_injured]
             # assigning inventors is done further up, here we just reserve possible inventors and invention places
             # for later by giving them a really bad score
             if {[lsearch $possible_invention_places [lindex $task 0]] >= 0} {
@@ -226,7 +232,7 @@ proc autoprod_ex {owner} {
         }
     }
 
-    #log_static "X: autoprod planning took [expr {[clock clicks]-$start_time}] clicks"
+    #log_static "X: autoprod planning took [expr {[clock clicks]-$start_time}] clicks" 1
 #} result]} {
     #log_static $result
 #}
@@ -278,7 +284,8 @@ proc gnome_invent_possible {gnome item} {
 #        if {$with_flush} {flush $logFileID}
 #    }] == 1} {
 #        if {[catch {
-#            set logFileID [open "data/_log/[get_objname this].txt" "w"]
+#            set logFileID [open "data/_log/[get_objname this]-[get_ref this].txt" "a"]
+#            puts $logFileID ""
 #            puts $logFileID $str
 #            if {$with_flush} {flush $logFileID}
 #        }] == 1} {
@@ -289,7 +296,7 @@ proc gnome_invent_possible {gnome item} {
 
 proc reset_autoprod_log {} {
 #    catch {
-#        file delete "data/_log/_autoprod.txt"
+#        #file delete "data/_log/_autoprod.txt"
 #    }
 }
 

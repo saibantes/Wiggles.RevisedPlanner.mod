@@ -9,8 +9,8 @@ if {[in_class_def]} {
     method autoprodx_do {task} {
         autoprodx_do_proc $task
     }
-    method autoprod_rate_task {task num_gnomes num_kettensaege num_hammer num_strahl num_reithamster num_hoverboard} {
-        autoprod_rate_task $task $num_gnomes $num_kettensaege $num_hammer $num_strahl $num_reithamster $num_hoverboard
+    method autoprod_rate_task {task num_gnomes num_kettensaege num_hammer num_strahl num_reithamster num_hoverboard max_inv num_injured} {
+        autoprod_rate_task $task $num_gnomes $num_kettensaege $num_hammer $num_strahl $num_reithamster $num_hoverboard $max_inv $num_injured
     }
 } else {
     call scripts/misc/autoprod.tcl
@@ -18,17 +18,26 @@ if {[in_class_def]} {
     set idle_start_time 0
     set blacklist_digpos  {}
     set blacklist_digtime {}
+    set blacklist_items     {}
+    set blacklist_item_time {}
 
     #==================================================================================================
 
-    proc autoprod_rate_task {task num_gnomes num_kettensaege num_hammer num_strahl num_reithamster num_hoverboard} {
-        global blacklist_digpos blacklist_digtime
+    proc autoprod_rate_task {task num_gnomes num_kettensaege num_hammer num_strahl num_reithamster num_hoverboard max_inv num_injured} {
+        global blacklist_digpos blacklist_digtime blacklist_items blacklist_item_time
         for {set idx [expr {[llength $blacklist_digtime]-1}]} {$idx >= 0} {incr idx -1} {
             set list_item [lindex $blacklist_digtime $idx]
             if {[gettime] - [lindex $list_item 0] > 3*150} {
                 #log "blacklisting of digging at ([lindex $blacklist_digpos $idx]) expired"
                 lrem blacklist_digpos  $idx
                 lrem blacklist_digtime $idx
+            }
+        }
+        for {set idx [expr {[llength $blacklist_item_time]-1}]} {$idx >= 0} {incr idx -1} {
+            if {[gettime] - [lindex $blacklist_item_time $idx] > 150} {
+                #log "blacklisting of item [lindex $blacklist_items $idx] expired"
+                lrem blacklist_items     $idx
+                lrem blacklist_item_time $idx
             }
         }
 
@@ -52,9 +61,37 @@ if {[in_class_def]} {
         
         set my_preferred_workplace [prod_gnome_get_preferred_workplace this]
         set i_am_preferred [expr {$my_preferred_workplace == $place}]
+        set max_distance 500
         set travel 0
         set score ""
         switch $type {
+            "carry" {
+                set destination [lindex $task 4]
+                set target $place
+                set max_distance 1e37
+                set inv_space [expr {[inv_getsize this]-[inv_cnt this]}]
+                if {$inv_space <= 0} {
+                    #log "X:   I have no free inventory space" 0
+                    return -1e37
+                }
+                set request_size [hmin $max_inv [llength $items]]
+                set inv_overload [expr {ceil(double($request_size)/$inv_space)-1}]
+                append score -$inv_overload*1000
+                if {$inv_overload != 0} {log "X:   -$inv_overload * 1000 due to lack of inventory space ($inv_space)" 0}
+                # check my distance to the destination(!) location
+                set path [vector_sub [get_pos this] [get_pos $destination]]
+                set travel [expr {abs([vector_unpackx $path]) + 3*abs([vector_unpacky $path])}]
+                if {!$i_am_preferred && ($travel > 500) && ([dist_between this $place] > 15)} {
+                    #log "X:   that is too far away!"
+                    return -1e37
+                }
+                # the real travel is from the place (the items are near that) to the destination
+                set path [vector_sub [get_pos $place] [get_pos $destination]]
+                set travel [expr {abs([vector_unpackx $path]) + 3*abs([vector_unpacky $path])}]
+                if {!$i_am_preferred} {
+                    append score -1000
+                }
+            }
             "bringprod" {
                 set travel [lindex $task 4]
                 set running_hamster [lindex $task 5]
@@ -87,7 +124,7 @@ if {[in_class_def]} {
                     append score -2000.0*[llength $preferred_workers]
                     # special case: Dojo has low priority, unless assigned
                     if {[get_objclass $place] == "Dojo"} {
-                        append score -2000.0
+                        append score -3000.0
                         #log "X:   I am not assigned to that Dojo, so I would rather avoid it" 0
                     }
                 }
@@ -118,6 +155,49 @@ if {[in_class_def]} {
                     }
                 }
                 
+                # special case: hospital
+                if {[string first "Heilen" $items] >= 0} {
+                    set nextorder [prod_guest nextorder $place]
+                    if {($::last_workplace == $place) && ($nextorder >= 0)} {
+                        #log "X:   I already started working here"
+                        append score +100
+                    }
+                    if {$num_injured <= 0} {
+                        #log "X:   noone is injured"
+                        append score -5000
+                    }
+                    if {$nextorder > 0} {
+                        #log "X:   patient is waiting for $nextorder"
+                        append score +$nextorder*10
+                    }
+                }
+                
+                # special case: brothel
+                if {$items == "_Liebesdienst"} {
+                    global stt_maxsearch_range gnome_gender
+                    set half_search_range [expr {$stt_maxsearch_range*0.5}]
+                    set plist [sparetime $place queryrect sex -$stt_maxsearch_range -$half_search_range $stt_maxsearch_range $half_search_range]
+                    #log "X:     all brothels in range: ($plist)"
+                    set num_brothel 1
+                    set num_same_sex 0
+                    foreach other_place $plist {
+                        if {($other_place != $place) && ([get_prod_slot_cnt $other_place _Liebesdienst] > 0)} {
+                            incr num_brothel
+                            set other_worker [call_method $other_place get_last_worker]
+                            #log "X:     $other_worker was recently working at $other_place"
+                            if {($other_worker != 0) && ($other_worker != $myref)} {
+                                if {$gnome_gender == [call_method $other_worker get_gender]} {
+                                    incr num_same_sex
+                                }
+                            }
+                        }
+                    }
+                    #log "X:   $num_same_sex out of $num_brothel brothels have the same gender"
+                    if {$num_same_sex*2 >= $num_brothel} {
+                        append score -4000
+                    }
+                }
+                
                 # TODO: bei Lager stärker Reithamster bevorzugen ("travel" ausrechnen oder abschätzen)
             }
             "invent" {
@@ -137,14 +217,18 @@ if {[in_class_def]} {
                 set target $place
             }
             "harvest" {
+                set preemptive [lindex $task 4]
                 append score -400.0*$num_kettensaege/$num_gnomes
                 if {[inv_find this "Kettensaege"] >= 0} {
                     append score +400
                 } else {
                     append score +[get_attrib this exp_Holz]*200
                 }
-                if {[get_objclass $place] == "Farm"} {
+                if {$preemptive && !$i_am_preferred} {
                     append score -1000
+                }
+                if {[lsearch $blacklist_items $items] >= 0} {
+                    append score -30000
                 }
                 set target $items
             }
@@ -254,7 +338,7 @@ if {[in_class_def]} {
         }
         set travel [expr {abs([get_posx this]-[vector_unpackx $target])+3*abs([get_posy this]-[vector_unpacky $target])}]
         #log "X:   My distance from the job would be $travel" 0
-        if {($travel > 500) && !$i_am_preferred} {
+        if {($travel > $max_distance) && !$i_am_preferred} {
             #log "X:   that is too far away!"
             return -1e37
         }
@@ -275,7 +359,7 @@ if {[in_class_def]} {
 
     proc autoprodx_do_proc {task} {
         global current_plan current_workplace current_worktask current_workclass current_worklist
-        global last_event idle_start_time
+        global last_event idle_start_time liebesdienst_gender
         
         #if {$current_workplace !=0} {log "WARNUNG: current_workplace=$current_workplace"}
         #if {$current_worklist !=""} {log "WARNUNG: current_worklist=$current_worklist"}
@@ -293,6 +377,7 @@ if {[in_class_def]} {
         #log "X: starting assigned task $task" 0
 
         set last_event ""
+        set liebesdienst_gender ""
         set current_plan "work"
         set current_workclass 0
         set current_workplace 0
@@ -301,6 +386,33 @@ if {[in_class_def]} {
         set type  [lindex $task 2]
         set items [lindex $task 3]
         switch $type {
+            "carry" {
+                set destination [lindex $task 4]
+                set current_worktask "carry"
+                set current_workplace $place
+                prod_change_muetze "transport"
+                set_objworkicons this [get_objclass $place] arrow_right
+                set lastcarry [expr {[inv_getsize this]-[inv_cnt this]-1}]
+                set items [lrange $items 0 $lastcarry]
+                prod_gnome_last_workplace this $place
+                prod_gnome_state this transport [lindex $items 0] $place
+                foreach item $items {
+                    lappend current_worklist "set ::walkfail_tasks {{log walkfail} {expr 1}}; pickup_nofail $item; expr 1"
+                }
+                set drop_items {log "dropping all items because I couldn't find my destination"}
+                foreach item $items {
+                    lappend drop_items "if \{\[inv_find_obj this $item\]>=0\} \{beamto_world $item\}"
+                }
+                lappend current_worklist "set ::walkfail_tasks \"$drop_items\" ; expr 1"
+                set is_first_item 1
+                foreach item $items {
+                    lappend current_worklist "if \{\[inv_find_obj this $item\]>=0\} \{prod_deliver $item $destination $is_first_item\} \{handle_pickupfail $item $place\}"
+                    set is_first_item 0
+                }
+                lappend current_worklist "set ::walkfail_tasks {}; expr 1"
+                lappend current_worklist "call_method $place autoprod_stop"
+                state_triggerfresh this work_dispatch
+            }
             "bringprod" {
                 set current_worktask "bringprod"
                 set current_workplace $place
@@ -314,8 +426,6 @@ if {[in_class_def]} {
 #                set_prodalloclock $place 1
 #                set_prodalloclock this 1
                 foreach item $items {
-                    set_lock $item 1
-                    # TODO: unlock wenn worklist abgebrochen wird
                     # Problem: take_item löscht sowohl tasklist als auch current_worklist im Fehlerfall
                     # ignore errors in pickup, continue with all the other items!
                     # call pickup twice: Helps in particular with Hamsters, which might
@@ -386,7 +496,13 @@ if {[in_class_def]} {
                 set current_workplace $place
                 prod_change_muetze "wood"
                 set_objworkicons this Axt Pilz
+                global walkfail_tasks
+                set     walkfail_tasks {"unset walkfail_tasks"}
+                lappend walkfail_tasks "lappend ::blacklist_items $items"
+                lappend walkfail_tasks "lappend ::blacklist_item_time [gettime]"
+                lappend walkfail_tasks "walkfail"
                 harvest $items
+                lappend current_worklist "set walkfail_tasks {}; expr 1"
                 lappend current_worklist "call_method $place autoprod_stop"
                 
                 prod_gnome_last_workplace this $place
@@ -420,7 +536,13 @@ if {[in_class_def]} {
                 prod_gnome_state this unpack $place $current_workpos
                 
                 if {[pickup $place]} {
+                    set     walkfail_tasks {"unset walkfail_tasks"}
+                    lappend walkfail_tasks {log "X: failed to unpack, retrying"}
+                    lappend walkfail_tasks [list prod_autounpack $place $current_workpos]
                     prod_autounpack $place $current_workpos
+                    lappend current_worklist "set walkfail_tasks {}; expr 1"
+                } else {
+                    #log "X: couldn't pick up [get_objname $place]" 0
                 }
             }
             "pack" {
@@ -508,9 +630,11 @@ if {[in_class_def]} {
     #==================================================================================================
     
     proc handle_pickupfail {item place} {
-        #log "X: couldn't pick up [get_objname $item]" 0
-        #log "X: path to item:  [path this [get_pos this] [get_pos $item]]" 0
-        #log "X: path to place: [path this [get_pos this] [get_pos $place]]"
+        #if {[obj_valid $item]} {
+        #    log "X: couldn't pick up [get_objname $item]" 0
+        #} else {
+        #    log "X: coldn't pick up item $item (invalid)"
+        #}
         if {[path this [get_pos this] [get_pos $place]] >= 0} {
             call_method $place autoprod_blacklist $item
         }
@@ -529,14 +653,21 @@ if {[in_class_def]} {
     
     #==================================================================================================
 
-    proc autoprod_unlock {} {
-        # TODO: nicht mehr gebraucht?
-        global current_workplace
-        #log "X: autoprod_unlock"
-        if {[check_method [get_objclass $current_workplace] autoprod_stop]} {
-            #log "X: call_method $current_workplace autoprod_stop"
-            call_method $current_workplace autoprod_stop
+    proc prod_deliver {item destination is_first_item} {
+        set dest_z [get_posz $destination]
+        set itempos [get_place -center [get_pos $destination] -rect -20 [expr {11-$dest_z}] 20 [expr {14.3-$dest_z}] -random [expr {$is_first_item?10:2}] -nearpos [get_pos this]]
+        if {[lindex $itempos 0]<0} {
+            set itempos [get_place -center [get_pos $destination] -rect -30 [expr {11-$dest_z}] 30 [expr {14.3-$dest_z}] -random [expr {$is_first_item?10:2}] -nearpos [get_pos this] -materials false]
+            if {[lindex $itempos 0]<0} {
+                set itempos [get_pos this]
+                return true
+            }
         }
+        tasklist_addfront this "beam_from_inv_to_pos $item \{$itempos\};play_anim bendb"
+        tasklist_addfront this "play_anim benda"
+        tasklist_addfront this "rotate_towards \{$itempos\}"
+        tasklist_addfront this "walk_near_item \{$itempos\} 0.7 0.1 auto 1.25"
+        return true
     }
     
 

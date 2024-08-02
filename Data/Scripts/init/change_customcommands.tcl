@@ -107,4 +107,41 @@ proc fix_fenris {} {
         }
     }
 }
+
+proc show_happiness {{gnome ""}} {
+    if {$gnome == ""} {
+        set gnome [get_selectedobject]
+    }
+    obj_eval $gnome {
+        set ctime [gettime]
+        set verdict {"not ok" "ok"}
+        set last_talk 0
+        catch {set last_talk $::spt_last_talk}
+        global spt_fun_stations
+        print "[get_objname this]'s mood is [get_attrib this atr_Mood]"
+        print "gnome age: [expr {([gettime]-$::birthtime) / 1800.0}] days"
+        print "civilization state = $::civ_state"
+        print "food variety:  $::funloss_eatvariety"
+        print "place variety: $::funloss_placevariety"
+        print "food quality:  $::funloss_eatquality"
+        print "sleep quality: $::funloss_slpquality"
+        print "home quality:  $::funloss_homequality"
+        print "bath quality:  $::funloss_bthquality"
+        print ""
+        print "last time talking:        [expr {$ctime-$last_talk}       ] seconds ago -> [lindex $verdict [expr {($spt_fun_stations & 1) != 0}]]"
+        print "last time place activity: [expr {$ctime-$::spt_last_place}] seconds ago -> [lindex $verdict [expr {($spt_fun_stations & 2) != 0}]]"
+        print "last time at living room: [expr {$ctime-$::spt_last_home} ] seconds ago -> [lindex $verdict [expr {($spt_fun_stations & 4) != 0}]]"
+        print "last time sex:            [expr {$ctime-$::spt_last_sex}  ] seconds ago -> [lindex $verdict [expr {($spt_fun_stations & 8) != 0}]]"
+        print "last time with partner:   [expr {$ctime-$::spt_last_prtn} ] seconds ago -> [lindex $verdict [expr {($spt_fun_stations & 16) != 0}]]"
+    }
+}
+
+proc print_time_log {} {
+    obj_eval [get_selectedobject] {
+        #proc time_line_log x {print $x}
+        sparetime_time_log 0
+        #rename time_line_log ""
+    }
+}
+
 $end
