@@ -5,6 +5,8 @@ While I was at it, I also fixed some bugs. And added new bugs.
 ## work-time assignments
 Due to technical limitations, the new scheduler for work is a completely new implementation, independent of the original one. Therefore 
 I can't give a list of changes - it is just different.
+## new feature
+Items very(!) close to a border stone will be carried "home", if the stone isn't already close
 ## spare-time activities
 - Increased search range for a hospital from 40 units to 160 units.
 - Reduced the late-game needs for quality and variety of spare-time activities: At high "civilization states" the gnome's requirements were impossible to satisfy, resulting in significant mood losses.
