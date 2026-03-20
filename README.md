@@ -23,6 +23,7 @@ I can't give a list of changes - it is just different.
 - Partially fixed the animation at the hospital where the patient should lay in bed: Now they are laying, but hovering a bit above the bed ...
 ## known bugs
 - Production sites no longer show when a gnome is working (the small green progress indicator is missing). I have no clue how to fix this.
+- Energy production sites will no longer consume material (the sites still need to be present with their resources).
 ## unknown bugs
 - This mod was developed on the original CD version of the game from 2001, no idea if it works on the re-release on GoG/Steam.
 - Generally very little tested at all.
@@ -37,3 +38,4 @@ but it is currently nowhere publicly available. Also, the moment of transition w
 the same place, idle gnomes not working at all for a while (until manually moved around), and maybe other issues.
 ## Combination with other mods
 Untested, but I expect this to fail for a lot of other mods, since this mod has a lot of changes so that the probability of a conflict is high.
+This mod will not work in combination with "CommandF9", because both will change the behavior of the F9 key.
