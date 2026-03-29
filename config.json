@@ -1,5 +1,5 @@
 {
-    "version" : "0.1",
+    "version" : "0.2",
     "author" : "Saibantes",
     
     "name" :  {
@@ -14,4 +14,12 @@
         "download" : "https://github.com/saibantes/Wiggles.RevisedPlanner.mod/releases",
         "wiki" : "https://github.com/saibantes/Wiggles.RevisedPlanner.mod/wiki"
     },
+	
+	"messages" : [
+		{
+			"content" :  {
+				"en" : "This mod depends on bugfixes of the BugFix mod. If this mod is used, it is strongly recommended to install the BugFix mod as well."
+			}
+		}
+	],
 }

@@ -1,0 +1,19 @@
+# This workflow builds the project on each push and pull request and publish it on new tags
+
+name: Deployment
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  publish-mod:
+    if: startsWith(github.ref, 'refs/tags/')
+    name: Publish Mod
+    uses: DigglesMods/DigglesModActions/.github/workflows/publish-mod.yml@main
+    with:
+      mod-title: RevisedPlanner
+      mod-name: RevisedPlanner
+    secrets:
+      github-token: ${{ secrets.GITHUB_TOKEN }}
