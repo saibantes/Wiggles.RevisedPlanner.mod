@@ -6,15 +6,15 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 ## [v0.2] - 2024-07-09
 ### Changes
 - Improved autoprod:
-- Multiple brothels should be assigned to different genders.
-- Improved unpacking (if path was blocked).
-- mproved handling of harvesting when the path was blocked.
-- Lower priority of hospital if no one is injured.
-- Implemented border stone function: Carry nearby material home.
-- Fixed and improved detection of multiple different dig-sites.
-- Improved priority of mushroom harvesting.
-- Fixed handling of failure to pick up material.
-- Fixed locking of assigned material.
+  - Multiple brothels should be assigned to different genders.
+  - Improved unpacking (if path was blocked).
+  - Improved handling of harvesting when the path was blocked.
+  - Lower priority of hospital if no one is injured.
+  - Implemented border stone function: Carry nearby material home.
+  - Fixed and improved detection of multiple different dig-sites.
+  - Improved priority of mushroom harvesting.
+  - Fixed handling of failure to pick up material.
+  - Fixed locking of assigned material.
 - Improved searching for brothel: Check gender.
 - Show additional icons to indicate current plan for spare-time.
 - Gnomes now prefer living rooms ("homes") with higher quality.
@@ -23,12 +23,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ### Removed
 - removed multiple bugfixes, because they were ported to BugFix mod:
-- Fixed a bug where the barkeeper would get stuck when four orders are pending at the same time.
-- Fixed a bug where the first position of bowlers would become unusable in certain situations.
-- Fixed that other bowling guests can cheer or boo at the current bowler.
-- Fixed a bug where gnomes could no longer use the disco and would leave immediately after arriving.
-- Workaround for when the bowling alley is stuck because the gnome registered as current bowler has left somehow.
-- Fixed a bug in the lava world where Fenris isn't found in his lair.
+  - Fixed a bug where the barkeeper would get stuck when four orders are pending at the same time.
+  - Fixed a bug where the first position of bowlers would become unusable in certain situations.
+  - Fixed that other bowling guests can cheer or boo at the current bowler.
+  - Fixed a bug where gnomes could no longer use the disco and would leave immediately after arriving.
+  - Workaround for when the bowling alley is stuck because the gnome registered as current bowler has left somehow.
+  - Fixed a bug in the lava world where Fenris isn't found in his lair.
 
 ## [v0.1] - 2022-04-22
 ### Added
