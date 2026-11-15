@@ -559,10 +559,15 @@ if {[in_class_def]} {
                 set current_workplace $place
                 set current_worktask "buildup"
                 prod_change_muetze "service"
-                set_objworkicons this arrow_up [get_objclass $place]
                 prod_gnome_state this unpack $place [get_pos $place]
                 
-                prod_autobuildup $place
+                if {[get_attrib $place atr_Hitpoints] < 1.0} {
+                    set_objworkicons this Hammer [get_objclass $place]
+                    prod_autorepair $place
+                } else {
+                    set_objworkicons this arrow_up [get_objclass $place]
+                    prod_autobuildup $place
+                }
             }
             "dig" {
                 global current_digpos idletimeout blacklist_digpos blacklist_digtime

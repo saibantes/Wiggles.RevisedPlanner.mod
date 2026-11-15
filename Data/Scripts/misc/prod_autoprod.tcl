@@ -59,7 +59,7 @@ if {[in_class_def]} {
     proc get_autoprod_proc {} {
 #        log "X: enabled=[get_prod_enabled this] mat_need=[get_prod_materialneed this] sched=[get_prod_schedule this] builtup=[get_buildupstate this] boxed=[get_boxed this] directevents=[get_prod_directevents this] prodalloclock=[get_prodalloclock this]" 0
         autoprod_unlock_items
-        if {[get_buildupstate this]} {
+        if {[get_buildupstate this] && ([get_attrib this atr_Hitpoints] >= 1.0)} {
             set_prod_unpack  this 0
             set_prod_buildup this 0
         }
