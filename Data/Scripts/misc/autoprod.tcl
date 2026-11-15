@@ -323,6 +323,105 @@ proc log_static {text {with_flush 1}} {
 #    }
 }
 
+# search the code segment for the access to the manager pointer
+# There must be a machine code sequence -117, -116, -127, -120, 4, 0, 0 (MOV ECX, [ECX+EAX*4+0x488]).
+# This is preceded by MOV ECX, [manager_ptr]. This proc returns the address of manager_ptr (thus a pointer to a pointer).
+proc find_object_ptr {} {
+    for {set addr 0x40000a} {$addr < 0x7ab000} {incr addr 7} {
+        set data [peek $addr]
+        if {$data == 0} {
+            if {([peek [expr {$addr-5}]] == -117) && ([peek [expr {$addr-4}]] == -116) 
+                        && ([peek [expr {$addr-3}]] == -127) && ([peek [expr {$addr-2}]] == -120)
+                        && ([peek [expr {$addr-1}]] == 4)    && ([peek [expr {$addr+1}]] == 0)} {
+                return [expr {$addr - 9}]
+            } elseif {([peek [expr {$addr-6}]] == -117) && ([peek [expr {$addr-5}]] == -116) 
+                        && ([peek [expr {$addr-4}]] == -127) && ([peek [expr {$addr-3}]] == -120)
+                        && ([peek [expr {$addr-2}]] == 4)    && ([peek [expr {$addr-1}]] == 0)} {
+                return [expr {$addr - 10}]
+            }
+        } elseif {$data == -117} {
+            if {([peek [expr {$addr+1}]] == -116) && ([peek [expr {$addr+2}]] == -127) 
+                        && ([peek [expr {$addr+3}]] == -120) && ([peek [expr {$addr+4}]] == 4)
+                        && ([peek [expr {$addr+5}]] == 0)    && ([peek [expr {$addr+6}]] == 0)} {
+                return [expr {$addr - 4}]
+            }
+        } elseif {$data == 4} {
+            if {([peek [expr {$addr-4}]] == -117) && ([peek [expr {$addr-3}]] == -116) 
+                        && ([peek [expr {$addr-2}]] == -127) && ([peek [expr {$addr-1}]] == -120)
+                        && ([peek [expr {$addr+1}]] == 0)    && ([peek [expr {$addr+2}]] == 0)} {
+                return [expr {$addr - 8}]
+            }
+        } elseif {$data == -120} {
+            if {([peek [expr {$addr-3}]] == -117) && ([peek [expr {$addr-2}]] == -116) 
+                        && ([peek [expr {$addr-1}]] == -127) && ([peek [expr {$addr+1}]] == 4)
+                        && ([peek [expr {$addr+2}]] == 0)    && ([peek [expr {$addr+3}]] == 0)} {
+                return [expr {$addr - 7}]
+            }
+        } elseif {$data == -127} {
+            if {([peek [expr {$addr-2}]] == -117) && ([peek [expr {$addr-1}]] == -116) 
+                        && ([peek [expr {$addr+1}]] == -120) && ([peek [expr {$addr+2}]] == 4)
+                        && ([peek [expr {$addr+3}]] == 0)    && ([peek [expr {$addr+4}]] == 0)} {
+                return [expr {$addr - 6}]
+            }
+        } elseif {$data == -116} {
+            if {([peek [expr {$addr-1}]] == -117) && ([peek [expr {$addr+1}]] == -127) 
+                        && ([peek [expr {$addr+2}]] == -120) && ([peek [expr {$addr+3}]] == 4)
+                        && ([peek [expr {$addr+4}]] == 0)    && ([peek [expr {$addr+5}]] == 0)} {
+                return [expr {$addr - 5}]
+            }
+        }
+    }
+}
+# "peek" returns an 8-bit value. Here is the 32-bit variant of that.
+proc peek32 {addr} {
+  return [expr {([peek $addr]&0xff)+0x100*([peek [expr {$addr+1}]]&0xff)+0x10000*([peek [expr {$addr+2}]]&0xff)+0x1000000*([peek [expr {$addr+3}]]&0xff)}]
+}
+# "poke" changes an 8-bit location in memory. Here is the 32-bit variant of that.
+proc poke32 {addr value} {
+  poke $addr $value
+  poke [expr {$addr+1}] [expr {$value >> 8}]
+  poke [expr {$addr+2}] [expr {$value >> 16}]
+  poke [expr {$addr+3}] [expr {$value >> 24}]
+}
+# Set the production state to $state and the associated item class to $obj_class.
+proc set_prod_state {objid state {obj_class ""}} {
+    set object_table 0
+    catch {
+        if [catch {
+            #log "XX: attempting to fetch autoprod_ex_object_table, this might fail on the first attempt"
+            set object_table [ref_get 0 autoprod_ex_object_table]
+        }] {
+            # initialize, so that we try this only once
+            ref_set 0 autoprod_ex_object_table 0
+            #log "XX: autoprod_ex_object_table was missing, searching for object table"
+            # this is the address of the pointer to the manager table
+            set manager_ptr_address [find_object_ptr]
+            #log "XX: manager pointer address: $manager_ptr_address"
+            # this is a pointer to the manager
+            set manager_ptr [peek32 $manager_ptr_address]
+            #log "XX: manager pointer: $manager_ptr"
+            # this is the address of the manager
+            set manager [peek32 $manager_ptr]
+            #log "XX: manager: $manager"
+            # the object table is 0x488 bytes into the manager's memory
+            set object_table [expr {$manager + 0x488}]
+            ref_set 0 autoprod_ex_object_table $object_table
+        }
+        #log "XX: object table: $object_table"
+        set object  [peek32 [expr {$object_table + $objid*4}]]
+        #log "XX: object: $object"
+        if {[peek32 [expr {$object + 0xdc}]] == $objid} {
+            set component [peek32 [expr {$object + 0x3e0}]]
+            #log "XX: component: $component"
+            if {[peek32 [expr {$component + 0x20}]] == $object} {
+                poke [expr {$component + 0x1c}] $state
+                poke32 [expr {$component + 0x48}] [ClassID $obj_class]
+            }
+        }
+    }
+    # always return true, because this function is called from the current_worklist
+    return true
+}
 
 
 #get_prod_buildup            ‹object›            get object unpack task state

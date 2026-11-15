@@ -418,7 +418,7 @@ if {[in_class_def]} {
             lappend autoprod_items $item
             set_lock $item 1
         }
-        return [list "bringprod" $result $total_path $running_hamster]
+        return [list "bringprod" $result $total_path $running_hamster $task]
     } ;# get_autoprod_proc
     
     proc autoprod_ex_prodchanged {} {

@@ -414,6 +414,7 @@ if {[in_class_def]} {
                 state_triggerfresh this work_dispatch
             }
             "bringprod" {
+                set prod_slot_class [lindex $task 6]
                 set current_worktask "bringprod"
                 set current_workplace $place
                 prod_change_muetze "transport"
@@ -423,6 +424,7 @@ if {[in_class_def]} {
                 prod_assignworker this $place
                 prod_gnome_last_workplace this $place
                 prod_gnome_state this transport [lindex $items 0] $place
+                set_prod_state $place 3 $prod_slot_class
 #                set_prodalloclock $place 1
 #                set_prodalloclock this 1
                 foreach item $items {
@@ -446,12 +448,14 @@ if {[in_class_def]} {
                     lappend current_worklist "if \{\[inv_find_obj this $item\]>=0\} \{prod_bringtoprod $item $place\} \{handle_pickupfail $item $place\}"
                 }
                 lappend current_worklist "set ::walkfail_tasks {}; expr 1"
+                lappend current_worklist "set_prod_state $place 0"
                 lappend current_worklist "call_method $place autoprod_stop"
 #log "list=$current_worklist" 0
                 state_triggerfresh this work_dispatch
             }
             "invent" -
             "work" {
+                set prod_slot_class $items
                 if {$type == "work"} {
                     set muetze [get_class_category $items]
                     #if {$muetze == "none"} {log "ERROR: hat confusion"}
@@ -460,24 +464,32 @@ if {[in_class_def]} {
                     prod_change_muetze $muetze
 #log "set_objworkicons this [get_objclass $place] Hammer $items" 0
                     set_objworkicons this [get_objclass $place] Hammer [string trim $items _]
+                    set new_state 2
                 } else {
                     prod_gnome_state this invent $place $items
                     set items Bp$items
                     set_objworkicons this question [get_objclass $place]
                     prod_change_muetze "erfinden"
+                    set new_state 1
                 }
                 set current_workclass $items
                 set current_worktask "work"
                 set current_workplace $place
-#                set place_pos [get_pos $place]
-#                if {[vector_dist $place_pos [get_pos this]] > 2.0} {
-#                    lappend current_worklist "walk_pos \"[vector_setz $place_pos 14.0]\"; expr 1"
-#                }
+                set place_pos [get_pos $place]
+                if {[vector_dist $place_pos [get_pos this]] > 2.0} {
+                    tasklist_add this "set ::walkfail_tasks {{log walkfail} {tasklist_clear this}}"
+                    tasklist_add this "walk_pos \"[vector_setz $place_pos 14.0]\""
+                    tasklist_add this "set ::walkfail_tasks {}"
+                }
+                tasklist_add this "set_prod_state $place $new_state $prod_slot_class"
+                tasklist_add this "if !\[get_energy $place\] \"tasklist_clear this ; set_prod_state $place 0\""
                 # prod_autobuild and other prod_* procs must not be in current_worklist!
                 # (doesn't work, because they overwrite current_worklist)
                 # prod_autobuild should not be called directly here!
                 # (doesn't quite work, because methods are called without using global namespace)
                 tasklist_add this "prod_autobuild $items $place"
+                ##nagelfar ignore Found constant * which is also a variable
+                tasklist_add this [list lappend current_worklist [list set_prod_state $place 0]]
                 if {![get_prod_switchmode $place]} {
                     ##nagelfar ignore Found constant * which is also a variable
                     tasklist_add this [list lappend current_worklist [list autoprod_reduce_workcount $place $items]]
@@ -544,6 +556,7 @@ if {[in_class_def]} {
                 } else {
                     #log "X: couldn't pick up [get_objname $place]" 0
                 }
+                tasklist_add this [list lappend current_worklist [list set_prod_state $place 0]]
             }
             "pack" {
                 set current_workplace $place
@@ -554,6 +567,7 @@ if {[in_class_def]} {
                 
                 set_prod_unpack $place 0
                 prod_autopack $place
+                tasklist_add this [list lappend current_worklist [list set_prod_state $place 0]]
             }
             "buildup" {
                 set current_workplace $place
@@ -568,6 +582,7 @@ if {[in_class_def]} {
                     set_objworkicons this arrow_up [get_objclass $place]
                     prod_autobuildup $place
                 }
+                tasklist_add this [list lappend current_worklist [list set_prod_state $place 0]]
             }
             "dig" {
                 global current_digpos idletimeout blacklist_digpos blacklist_digtime
