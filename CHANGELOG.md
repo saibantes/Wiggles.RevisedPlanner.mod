@@ -3,7 +3,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
-## next
+## [v0.2.1] - 2026-11-25
 ### Fixes
 - Fixed repairing of buildings.
 - Certain production buildings now consume energy, just like with the original scheduler.
