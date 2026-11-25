@@ -23,9 +23,6 @@ Items very(!) close to a border stone will be carried "home", if the stone isn't
 - Reduced the mood loss from bad sleep quality (insufficient beds) by half. The same code was in here twice, so it seems this was not intentional (and thus I consider it a bug).
 - Fixed a bug where the hospital would no longer work after a patient died.
 - Partially fixed the animation at the hospital where the patient should lay in bed: Now they are laying, but hovering a bit above the bed ...
-## known bugs
-- Production sites no longer show when a gnome is working (the small green progress indicator is missing). I have no clue how to fix this.
-- Energy production sites will no longer consume material (the sites still need to be present with their resources).
 ## unknown bugs
 - This mod was developed on the original CD version of the game from 2001, no idea if it works on the re-release on GoG/Steam.
 - Generally very little tested at all.

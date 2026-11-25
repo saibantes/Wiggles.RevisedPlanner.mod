@@ -3,6 +3,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
+## next
+### Fixes
+- Fixed repairing of buildings.
+- Certain production buildings now consume energy, just like with the original scheduler.
+- When material is delivered to a building, the selected production item is marked with a blue bar.
+- When production is going on, the selected item has a green progress bar below it.
+
 ## [v0.2] - 2024-07-09
 ### Changes
 - Improved autoprod:
