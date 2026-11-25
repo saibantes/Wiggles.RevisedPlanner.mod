@@ -144,4 +144,98 @@ proc print_time_log {} {
     }
 }
 
+proc count_bytes {{b 0}} {
+    global count
+    array unset count
+    set start_addr [expr {[find_base_address] + $b}]
+    set end_addr   [expr {$start_addr + 0x3ab000}]
+    for {set addr $start_addr} {$addr < $end_addr} {incr addr} {
+        if {[catch {incr count([peek $addr])}] == 1} {set count([peek $addr]) 1}
+    }
+}
+proc peek32 {addr} {
+  return [expr {([peek $addr]&0xff)+0x100*([peek [expr {$addr+1}]]&0xff)+0x10000*([peek [expr {$addr+2}]]&0xff)+0x1000000*([peek [expr {$addr+3}]]&0xff)}]
+}
+proc find_base_address {} {
+    for {set addr 0x400000} {$addr < 0x1400000} {incr addr 0x10000} {
+        if {[catch {peek $addr}] == 0} {
+            return $addr
+        }
+    }
+    return 0
+}
+proc find_manager_access_ptr {} {
+    set result2 0
+    
+    for {set addr 0x10000} {$addr <= 0x1400000} {set addr [expr {($addr/0x10000+1)*0x10000}]} {
+        catch {
+            if {[peek $addr] != 77} continue;
+            incr addr
+            if {[peek $addr] != 90} continue;
+            incr addr 0x1000
+            set end_addr [expr {$addr + 0x3ab000}]
+            for {} {$addr < $end_addr} {incr addr 9} {
+                set data [peek $addr]
+                if {$data == 0} {
+                    set data2 [peek [expr {$addr-1}]]
+                    if {$data2 == 0} {
+                        set result [expr {$addr-10}]
+                    } elseif {$data2 == 4} {
+                        set result [expr {$addr-9}]
+                    } else {
+                        continue
+                    }
+                } elseif {$data == -117} {
+                    set result [expr {$addr-4}]
+                } elseif {$data == 4} {
+                    set result [expr {$addr-8}]
+                } elseif {$data == -123} {
+                    set result [expr {$addr-11}]
+                } elseif {$data == -55} {
+                    set result [expr {$addr-12}]
+                } elseif {$data == -120} {
+                    set result [expr {$addr-7}]
+                } elseif {$data == -127} {
+                    set result [expr {$addr-6}]
+                } elseif {$data == -116} {
+                    set result [expr {$addr-5}]
+                } elseif {$data == -104} {
+                    set result [expr {$addr-6}]
+                } else {
+                    continue
+                }
+                if {([peek [expr {$result+4}]] == -117) && ([peek [expr {$result+5}]] == -116) 
+                            && ([peek [expr {$result+7}]] == -120) && ([peek [expr {$result+8}]] == 4)
+                            && ([peek [expr {$result+9}]] == 0)    && ([peek [expr {$result+10}]] == 0)
+                            && ([peek [expr {$result+11}]] == -123) && ([peek [expr {$result+12}]] == -55)
+                            && (([peek [expr {$result-1}]] == 13) || ([peek [expr {$result-1}]] == -95))} {
+                    print [format "XX: found access at 0x%x" $result]
+                    set result2 $result
+                }
+            }
+        }
+        #if {$result2 != 0} {return $result2}
+    }
+    return $result2
+}
+proc get_prod_state {objid} {
+    set manager_access_ptr_ptr [find_manager_access_ptr]
+    print "XX: manager pointer ptr: $manager_access_ptr_ptr"
+    set manager_ptr [peek32 $manager_access_ptr_ptr]
+    print "XX: manager ptr: $manager_ptr"
+    set manager [peek32 $manager_ptr]
+    print "XX: manager: $manager"
+    set object  [peek32 [expr {$manager + 0x488 + $objid*4}]]
+    print "XX: object: $object"
+    if {[peek32 [expr {$object + 0xdc}]] == $objid} {
+        set component [peek32 [expr {$object + 0x3e0}]]
+        print "XX: component: $component"
+        if {[peek32 [expr {$component + 0x20}]] == $object} {
+            return [peek32 [expr {$component + 0x1c}]]
+        }
+    }
+}
+proc get_selected_prod_state {} {
+    return [get_prod_state [get_selectedobject]]
+}
 $end

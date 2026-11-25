@@ -300,54 +300,67 @@ proc log_static {text {with_flush 1}} {
 #    }
 }
 
-# search the code segment for the access to the manager pointer
-# There must be a machine code sequence -117, -116, -127, -120, 4, 0, 0 (MOV ECX, [ECX+EAX*4+0x488]).
-# This is preceded by MOV ECX, [manager_ptr]. This proc returns the address of manager_ptr (thus a pointer to a pointer).
-proc find_object_ptr {} {
-    for {set addr 0x40000a} {$addr < 0x7ab000} {incr addr 7} {
-        set data [peek $addr]
-        if {$data == 0} {
-            if {([peek [expr {$addr-5}]] == -117) && ([peek [expr {$addr-4}]] == -116) 
-                        && ([peek [expr {$addr-3}]] == -127) && ([peek [expr {$addr-2}]] == -120)
-                        && ([peek [expr {$addr-1}]] == 4)    && ([peek [expr {$addr+1}]] == 0)} {
-                return [expr {$addr - 9}]
-            } elseif {([peek [expr {$addr-6}]] == -117) && ([peek [expr {$addr-5}]] == -116) 
-                        && ([peek [expr {$addr-4}]] == -127) && ([peek [expr {$addr-3}]] == -120)
-                        && ([peek [expr {$addr-2}]] == 4)    && ([peek [expr {$addr-1}]] == 0)} {
-                return [expr {$addr - 10}]
+# search through the code segment for the access to the manager pointer
+# Wiggles 1.0.814 and 1.0.844 have
+#   8B 0D xx xx xx xx ; 8B 8C 81 88 04 00 00 ; 85 C9 (MOV ECX, [xxxxxxxx] ; MOV ECX,[ECX+EAX*4+0x488] ; TEST ECX,ECX)
+# 2.1.1.10 has:
+#      A1 xx xx xx xx ; 8B 8C 98 88 04 00 00 ; 85 C9 (MOV EAX, [xxxxxxxx] ; MOV ECX,[EAX+EBX*4+0x488] ; TEST ECX,ECX)
+# This proc will return the address for the xxxxxxxx (thus a pointer to the pointer).
+# Only part of these sequences is needed to uniquely identify the code sequence. However, the longer the 
+# consecutive fixed part, the faster we can search for it.
+proc find_manager_access_ptr {} {
+    for {set addr 0x10000} {$addr <= 0x1400000} {set addr [expr {($addr/0x10000+1)*0x10000}]} {
+        if {[catch {
+            # only consider segments starting with "MZ" (the exe file magic number)
+            if {[peek $addr] != 77} continue
+            incr addr
+            if {[peek $addr] != 90} continue
+            incr addr 0x1000
+            set end_addr [expr {$addr + 0x3ab000}]
+            for {} {$addr < $end_addr} {incr addr 9} {
+                set data [peek $addr]
+                if {$data == 0} {
+                    set data2 [peek [expr {$addr-1}]]
+                    if {$data2 == 0} {
+                        set result [expr {$addr-10}]
+                    } elseif {$data2 == 4} {
+                        set result [expr {$addr-9}]
+                    } else {
+                        continue
+                    }
+                } elseif {$data == -117} {
+                    set result [expr {$addr-4}]
+                } elseif {$data == 4} {
+                    set result [expr {$addr-8}]
+                } elseif {$data == -123} {
+                    set result [expr {$addr-11}]
+                } elseif {$data == -55} {
+                    set result [expr {$addr-12}]
+                } elseif {$data == -120} {
+                    set result [expr {$addr-7}]
+                } elseif {$data == -127} {
+                    set result [expr {$addr-6}]
+                } elseif {$data == -116} {
+                    set result [expr {$addr-5}]
+                } elseif {$data == -104} {
+                    set result [expr {$addr-6}]
+                } else {
+                    continue
+                }
+                if {([peek [expr {$result+4}]] == -117) && ([peek [expr {$result+5}]] == -116) 
+                            && ([peek [expr {$result+7}]] == -120) && ([peek [expr {$result+8}]] == 4)
+                            && ([peek [expr {$result+9}]] == 0)    && ([peek [expr {$result+10}]] == 0)
+                            && ([peek [expr {$result+11}]] == -123) && ([peek [expr {$result+12}]] == -55)
+                            && (([peek [expr {$result-1}]] == 13) || ([peek [expr {$result-1}]] == -95))} {
+                    #log [format "XX: found access at 0x%x" $result]
+                    return $result
+                }
             }
-        } elseif {$data == -117} {
-            if {([peek [expr {$addr+1}]] == -116) && ([peek [expr {$addr+2}]] == -127) 
-                        && ([peek [expr {$addr+3}]] == -120) && ([peek [expr {$addr+4}]] == 4)
-                        && ([peek [expr {$addr+5}]] == 0)    && ([peek [expr {$addr+6}]] == 0)} {
-                return [expr {$addr - 4}]
-            }
-        } elseif {$data == 4} {
-            if {([peek [expr {$addr-4}]] == -117) && ([peek [expr {$addr-3}]] == -116) 
-                        && ([peek [expr {$addr-2}]] == -127) && ([peek [expr {$addr-1}]] == -120)
-                        && ([peek [expr {$addr+1}]] == 0)    && ([peek [expr {$addr+2}]] == 0)} {
-                return [expr {$addr - 8}]
-            }
-        } elseif {$data == -120} {
-            if {([peek [expr {$addr-3}]] == -117) && ([peek [expr {$addr-2}]] == -116) 
-                        && ([peek [expr {$addr-1}]] == -127) && ([peek [expr {$addr+1}]] == 4)
-                        && ([peek [expr {$addr+2}]] == 0)    && ([peek [expr {$addr+3}]] == 0)} {
-                return [expr {$addr - 7}]
-            }
-        } elseif {$data == -127} {
-            if {([peek [expr {$addr-2}]] == -117) && ([peek [expr {$addr-1}]] == -116) 
-                        && ([peek [expr {$addr+1}]] == -120) && ([peek [expr {$addr+2}]] == 4)
-                        && ([peek [expr {$addr+3}]] == 0)    && ([peek [expr {$addr+4}]] == 0)} {
-                return [expr {$addr - 6}]
-            }
-        } elseif {$data == -116} {
-            if {([peek [expr {$addr-1}]] == -117) && ([peek [expr {$addr+1}]] == -127) 
-                        && ([peek [expr {$addr+2}]] == -120) && ([peek [expr {$addr+3}]] == 4)
-                        && ([peek [expr {$addr+4}]] == 0)    && ([peek [expr {$addr+5}]] == 0)} {
-                return [expr {$addr - 5}]
-            }
+        }] == 2} {
+            return $result
         }
     }
+    return 0
 }
 # "peek" returns an 8-bit value. Here is the 32-bit variant of that.
 proc peek32 {addr} {
@@ -372,7 +385,7 @@ proc set_prod_state {objid state {obj_class ""}} {
             ref_set 0 autoprod_ex_object_table 0
             #log "XX: autoprod_ex_object_table was missing, searching for object table"
             # this is the address of the pointer to the manager table
-            set manager_ptr_address [find_object_ptr]
+            set manager_ptr_address [find_manager_access_ptr]
             #log "XX: manager pointer address: $manager_ptr_address"
             # this is a pointer to the manager
             set manager_ptr [peek32 $manager_ptr_address]
