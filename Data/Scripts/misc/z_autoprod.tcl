@@ -1,10 +1,3 @@
-##nagelfar syntax lrem v x
-##nagelfar syntax lrep v x x
-##nagelfar syntax fincr v x
-
-# Meine Basis:
-#   183 breit, 48 hoch
-
 if {[in_class_def]} {
     method autoprodx_do {task} {
         autoprodx_do_proc $task
@@ -450,7 +443,7 @@ if {[in_class_def]} {
                 lappend current_worklist "set ::walkfail_tasks {}; expr 1"
                 lappend current_worklist "set_prod_state $place 0"
                 lappend current_worklist "call_method $place autoprod_stop"
-#log "list=$current_worklist" 0
+                #log "list=$current_worklist" 0
                 state_triggerfresh this work_dispatch
             }
             "invent" -
@@ -462,7 +455,7 @@ if {[in_class_def]} {
                     #log "X: fitting hat is $muetze"
                     prod_gnome_state this build $place $items
                     prod_change_muetze $muetze
-#log "set_objworkicons this [get_objclass $place] Hammer $items" 0
+                    #log "set_objworkicons this [get_objclass $place] Hammer $items" 0
                     set_objworkicons this [get_objclass $place] Hammer [string trim $items _]
                     set new_state 2
                 } else {
@@ -614,6 +607,7 @@ if {[in_class_def]} {
             }
             default {
                 set current_worktask ""
+                #log "autoprod_x internal error: invalid task ($task)"
                 return 0
             }
         }
@@ -696,57 +690,3 @@ if {[in_class_def]} {
     #==================================================================================================
 
 }
-
-
-
-#Material liefern
-# EVT_AUTOPROD_WALK
-# EVT_AUTOPROD_PICKUP
-# EVT_AUTOPROD_WALK
-# EVT_AUTOPROD_TRANSFERPROD
-
-#Produzieren
-# EVT_AUTOPROD_WORKAT
-
-#Pilz umhauen
-# EVT_AUTOPROD_WALK
-# EVT_AUTOPROD_HARVEST
-
-#Auspacken
-# EVT_AUTOPROD_WALK
-# EVT_AUTOPROD_PICKUP
-# EVT_AUTOPROD_WALK
-# EVT_AUTOPROD_UNPACK
-#Auspackkoordinaten:
-# vector_sub [lindex [check_ghost_coll bbox this $item] 0] [get_negbbox $item]
-# ist schlechter: vector_mul [eval vector_add [check_ghost_coll bbox this 442]] 0.5
-
-#Energie
-# EVT_AUTOPROD_WALK
-# EVT_AUTOPROD_WORKAT
-
-
-# get_remaining_sparetime -> 0 während der Arbeit, sonst 6.0 .. 0.0
-# get_worktime next/laststart: springt um am Arbeitsanfang, absolute Stunden seit Spielanfang
-# get_worktime next/lastend:   springt um zum Freizeitanfang, absolute Stunden seit Spielanfang
-# start, end, duration: Anzahl Stunden pro Tag, fest
-# -> [gethours] - 150*[get_worktime $gnome laststart]
-
-# gnome_idle        -> Idle-Timer starten, bei 10s kann der Autoprod zuschlagen
-# prod_gnomeidle    -> Idle-Timer starten
-
-
-
-
-# Speed due to different transport mechanisms
-# Speed just by running:  1.6
-# Speed with Reithamster: 2.7
-# Speed with Hoverboard:  3.0
-# However, passing vertical shafts takes extra time. It takes more time the higher advanced
-# the transport is.
-# Assuming we have one Shaft every 75 units of length (VERY rough estimate), we have a 
-# resulting speed of:
-# Runnig: 1.5 ; Hamster: 2.1 ; Hoverboard: 3.0
-# Vertical Speed on a ladder is roughly 1.0
-# Vertical shafts are farther apart, so vertical movement requires additional horizontal
-# movement to the next shaft.

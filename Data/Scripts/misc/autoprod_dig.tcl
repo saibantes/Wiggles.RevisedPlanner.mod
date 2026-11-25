@@ -1,7 +1,3 @@
-##nagelfar syntax def_class x x x x x cl
-##nagelfar syntax obj_init cl
-##nagelfar syntax handle_event x cl
-##nagelfar syntax method dm
 def_class AutoprodDigsiteFinder none none 0 {} {
     def_event evt_timer0
 
@@ -54,7 +50,6 @@ def_class AutoprodDigsiteFinder none none 0 {} {
             global block_y
             global new_entries new_site_id old_entries
             global old_sizes dig_sizes
-#            global new_map old_map
             global active_lines active_blocks
             switch $state {
                 "init" {

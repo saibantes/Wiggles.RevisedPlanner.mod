@@ -1,6 +1,3 @@
-##nagelfar syntax lrem v x
-##nagelfar syntax fincr v x
-
 proc autoprod_ex {owner} {
 #if {0 != [catch {
     set start_time [clock clicks]
@@ -120,7 +117,7 @@ proc autoprod_ex {owner} {
                         }
                     }
                     if {$best_score > -1e36} {
-#log_static "$best_score $best_gnome $place ($busy_places) $item ($available_gnomes)"
+                        #log_static "$best_score $best_gnome $place ($busy_places) $item ($available_gnomes)"
                         lappend possible_inventors $best_gnome
                         if {[lsearch $busy_places $place] < 0} {
                             #log_static "X: assigning [get_objname $best_gnome] to invent $item" 0
@@ -169,7 +166,7 @@ proc autoprod_ex {owner} {
         }
     }
     # look through all digsites
-#log_static "busy digsites: $busy_digsites" 0
+    #log_static "busy digsites: $busy_digsites" 0
     set idx 0
     foreach digsite [call_method $digsite_finder get_caves] {
         if {[lsearch $busy_digsites $idx] < 0} {
@@ -241,20 +238,6 @@ proc autoprod_ex {owner} {
 
 #==================================================================================================
 
-# has the owner any gnome on duty for inventing this item?
-#proc worktime_invent_possible {owner item} {
-#    foreach gnome [obj_query 0 -type {gnome} -owner $owner] {
-#        if {[get_remaining_sparetime $gnome] == 0} {
-#            if [gnome_invent_possible $gnome $item] {
-#                return 1
-#            }
-#        }
-#    }
-#    return 0
-#}
-
-#==================================================================================================
-
 proc get_disable_old_autoprod {} {
     # check if human player
     #log "owner type of [get_objname this] is [get_objownertype this]"
@@ -293,12 +276,6 @@ proc gnome_invent_possible {gnome item} {
 #        }
 #    }
 #}
-
-proc reset_autoprod_log {} {
-#    catch {
-#        #file delete "data/_log/_autoprod.txt"
-#    }
-}
 
 proc log_static {text {with_flush 1}} {
 #    global logFileID_static
@@ -422,86 +399,3 @@ proc set_prod_state {objid state {obj_class ""}} {
     # always return true, because this function is called from the current_worklist
     return true
 }
-
-
-#get_prod_buildup            ‹object›            get object unpack task state
-#get_prod_directevents       ‹objref›            set switch production mode             ????
-#get_prod_enabled            ‹objref›            get true if energy source is on        ????
-#get_prod_exclusivemode      ‹objref›            set exclusive production mode          ????
-#get_prod_materialneed       ‹objref›            set the need of materials              ????
-#get_prod_ownerstrength      ‹object›            get object owner strength              ????
-#get_prod_pack               ‹object›            get object pack task state
-#get_prod_schedule           ‹objref›            set switch production mode             ????
-#get_prod_slot_buildable     ‹object› ‹class›    check if slot is buildable             probably material availability -> not orange marked
-#get_prod_slot_cnt           ‹object› ‹itemclass›    get task count for production slot
-#get_prod_slot_inventable    ‹object› ‹class›
-#get_prod_slot_invented      ‹object› ‹class›
-#get_prod_slot_list          ‹object›
-#get_prod_switchmode         ‹objref›            set switch production mode             Ein/Aus-Schalter statt Produktionszähler
-#get_prod_task_list          ‹object›            get list of open tasks
-#get_prod_toolneed           ‹objref›            set the need of tools                  vielleicht noch nicht implementiert?
-#get_prod_total_task_cnt     ‹object›            get total number of open tasks
-#get_prod_unpack             ‹object›            get object unpack task state
-#get_prodalloclock           ‹objref›            get production alloc state             vielleich Material für die aktuelle Produktion?
-#get_prodautoschedule        ‹objref›            get production auto schedule
-
-#prod_assignworker                  ‹objref› ‹prodplace›    announce worker assignment
-#prod_get_task_active_places        ‹owner› ‹class›         get list of prodplaces with active slots for this class
-#prod_get_task_all_places           ‹owner› ‹class›         get list of prodplaces that can build this class
-#prod_get_task_total_cnt            ‹owner› ‹class›         get total number of production tasks for this class
-#prod_gnome_get_last_workplace      ‹objref›                get last work place
-#prod_gnome_get_preferred_workplace ‹objref›                get preferred work place
-#prod_gnome_last_workplace          ‹objref› [‹work-place›] announce current work place
-#prod_gnome_preferred_workplace     ‹objref› [‹work-place›] announce preferred work place
-#prod_gnome_state                   ‹objref› ...
-#prod_gnomeidle                     ‹objref› [true|false]   announce worker is idle
-#prod_valid                         ‹obj› ‹prod›            checks if is a non boxed, non contained , build and valid object with the same owner like
-#proddump                           ‹player›                dump prodplanner state
-#prodslot_override                  ...
-#
-#
-#set_prod_buildup
-#set_prod_directevents
-#set_prod_enabled
-#set_prod_exclusivemode
-#set_prod_materialneed
-#set_prod_ownerstrnength
-#set_prod_pack
-#set_prod_schedule
-#set_prod_slot_cnt
-#set_prod_switchmode
-#set_prod_toolneed
-#set_prod_unpack
-#set_prodalloclock
-#set_prodautoschedule
-
-
-
-#dist_between (object)
-#dist_between ‹objref› ‹objref›
-#get the distance between 2 objects
-#
-#obj_find_list (object)
-#obj_find_list ‹objref› ‹class-name› (‹max-dist›)
-#get list of object references for given class
-#list is sorted by distance. nearest first. max-dist default is infinite
-#
-#obj_find_nearest (object)
-#obj_find_nearest ‹objref› ‹class-name-list› (‹max-dist›)
-#find next object of given class,
-#returns Reference to object, and Class name of object
-#returns 0 if nothing found
-#
-#obj_query (object)
-#obj_query ‹objref› ‹params›
-
-# TODO: method get_deliverypos
-
-
-# prod_enabled:      Türen: aus. Für Lager dann aus, wenn nichts zu tun ist.
-# prod_schedule:     Lorenbahn: aus. Schule: Aus, während unterrichted wird. Farm: kompliziert
-# prod_materialneed: Lorenbahn, Theater: aus. Bar, Farm: kompliziert
-# prod_directevents: Fallen, Grabstein, Lorenbahn, TitanicPumpe: an
-
-# prod_valid <obj> <prod>   prod=Produktionsstätte, obj=objekt der selben Fraktion
-
