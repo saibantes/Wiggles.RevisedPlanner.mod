@@ -80,7 +80,7 @@ if {[in_class_def]} {
                 
                 set myclass [get_objclass this]
                 if {$as_box} {
-                    set negbbox [get_negbbox this]
+                    set negbbox [vector_mul [eval vector_sub $ghost_bbox] 0.5]
                 } else {
                     global autoprod_negbbox
                     if {[llength $autoprod_negbbox] != 3} {

@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 - Certain production buildings now consume energy, just like with the original scheduler.
 - When material is delivered to a building, the selected production item is marked with a blue bar.
 - When production is going on, the selected item has a green progress bar below it.
+- Position when taking a box from storage and putting it down (still as a box) was wrong.
 
 ## [v0.2] - 2024-07-09
 ### Changes
